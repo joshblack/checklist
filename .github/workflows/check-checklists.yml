@@ -1,10 +1,16 @@
-name: Check Checklists
+name: checklists
 on:
+  issue_comment:
+    types: [created, edited, deleted]
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  checked:
+  status:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,13 +20,30 @@ jobs:
           node-version: 20
           cache: "npm"
       - uses: actions/github-script@v7
+        id: issue-number
+        with:
+          script:
+            if (context.payload.pull_request) {
+              return context.payload.pull_request.number;
+            }
+
+            if (context.payload.issue) {
+              return context.payload.issue.number;
+            }
+
+            if (context.payload.comment) {
+              return context.payload.issue.number;
+            }
+
+            throw new Error('Unable to find issue-number for event');
+      - uses: actions/github-script@v7
         with:
           script: |
             const CHECKLIST_REGEX = /^checklist: (.+)/g;
             const { data: labels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: ${{ steps.issue-number.outputs.result }},
             });
             const checklists = labels.filter((label) => {
               return label.name.startsWith('checklist: ');
@@ -39,14 +62,14 @@ jobs:
               return checklist;
             });
             if (checklists.length === 0) {
-              core.info('No checklists defined for Pull Request');
+              core.info('No checklists defined');
               return;
             }
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: ${{ steps.issue-number.outputs.result }},
             });
 
             for (const checklist of checklists) {
@@ -58,15 +81,44 @@ jobs:
                 throw new Error(`Unable to find comment for checklist: ${checklist}`);
               }
 
+              let hasIncompleteItems = false;
               for (const line of comment.body.split('\n')) {
                 const trimmed = line.trim();
                 if (trimmed.startsWith('- [ ]')) {
-                  throw new Error(`Checklist item not checked: ${trimmed}`);
-                }
-
-                if (trimmed.startsWith('- [x]')) {
+                  if (hasIncompleteItems === false) {
+                    hasIncompleteItems = true;
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: ${{ steps.issue-number.outputs.result }},
+                      name: 'checklists: complete',
+                    });
+                    await github.rest.issues.addLabels({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: ${{ steps.issue-number.outputs.result }},
+                      labels: ['checklists: incomplete'],
+                    });
+                  }
+                  core.info(`Checklist item not checked: ${trimmed}`)
+                } else if (trimmed.startsWith('- [x]')) {
                   core.info(`Checklist item checked: ${trimmed}`);
                 }
               }
+            }
+
+            if (!hasIncompleteItems) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ steps.issue-number.outputs.result }},
+                name: 'checklists: incomplete',
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ steps.issue-number.outputs.result }},
+                labels: ['checklists: complete'],
+              });
             }
 
