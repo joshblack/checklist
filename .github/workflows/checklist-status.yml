@@ -11,12 +11,44 @@ jobs:
   complete:
     runs-on: ubuntu-latest
     steps:
-      - name: Checklists are complete
-        if: ${{ contains(github.event.labels.*.name, 'checklist:') && contains(github.event.labels.*.name, 'checklists: complete') }}
-        run: exit 0
-      - name: Checklists are incomplete
-        if: ${{ contains(github.event.labels.*.name, 'checklist:') && contains(github.event.labels.*.name, 'checklists: incomplete') }}
-        run: exit 1
-      - name: No checklists
-        if: ${{ !contains(github.event.labels.*.name, 'checklist:') }}
-        run: exit 0
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - uses: actions/github-script@v7
+        with:
+          script:
+            const CHECKLIST_REGEX = /^checklist: (.+)/g;
+            const checklists = context.payload.pull_request.labels.filter((label) => {
+              return label.name.startsWith('checklist: ');
+            }).map((label) => {
+              const matches = label.name.matchAll(CHECKLIST_REGEX);
+              if (matches.length === 0) {
+                throw new Error('No checklist found in label');
+              }
+              const [match] = matches;
+              const [_match, checklist] = match;
+              if (!checklist) {
+                throw new Error('Unable to find checklist from regex');
+              }
+              return checklist;
+            });
+            if (checklists.length === 0) {
+              return;
+            }
+
+            const incomplete = context.payload.pull_request.labels.find((label) => {
+              return label.name === 'checklist: incomplete';
+            });
+            if (incomplete) {
+              throw new Error('Checklist is incomplete');
+            }
+
+            const complete = context.payload.pull_request.labels.find((label) => {
+              return label.name === 'checklist: complete';
+            });
+            if (!complete) {
+              throw new Error('No complete checklist label was found');
+            }
