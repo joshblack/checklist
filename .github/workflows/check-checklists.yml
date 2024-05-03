@@ -1,0 +1,72 @@
+name: Check Checklists
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checked:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const CHECKLIST_REGEX = /^checklist: (.+)/g;
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            const checklists = labels.filter((label) => {
+              return label.name.startsWith('checklist: ');
+            }).map((label) => {
+              const matches = label.name.matchAll(CHECKLIST_REGEX);
+              if (matches.length === 0) {
+                throw new Error('No checklist found in label');
+              }
+
+              const [match] = matches;
+              const [_match, checklist] = match;
+              if (!checklist) {
+                throw new Error('Unable to find checklist from regex');
+              }
+
+              return checklist;
+            });
+            if (checklists.length === 0) {
+              core.info('No checklists defined for Pull Request');
+              return;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+
+            for (const checklist of checklists) {
+              const identifier = `<!-- source:actions checklist:${checklist} -->`;
+              const comment = comments.find((comment) => {
+                return comment.body.includes(identifier);
+              });
+              if (!comment) {
+                throw new Error(`Unable to find comment for checklist: ${checklist}`);
+              }
+
+              for (const line of comment.body.split('\n')) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('- [ ]')) {
+                  throw new Error(`Checklist item not checked: ${trimmed}`);
+                }
+
+                if (trimmed.startsWith('- [x]')) {
+                  core.info(`Checklist item checked: ${trimmed}`);
+                }
+              }
+            }
+
