@@ -39,14 +39,14 @@ jobs:
             }
 
             const incomplete = context.payload.pull_request.labels.find((label) => {
-              return label.name === 'checklist: incomplete';
+              return label.name === 'checklists: incomplete';
             });
             if (incomplete) {
               throw new Error('Checklist is incomplete');
             }
 
             const complete = context.payload.pull_request.labels.find((label) => {
-              return label.name === 'checklist: complete';
+              return label.name === 'checklists: complete';
             });
             if (!complete) {
               throw new Error('No complete checklist label was found');
