@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  complete:
+  status:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,40 +81,44 @@ jobs:
                 throw new Error(`Unable to find comment for checklist: ${checklist}`);
               }
 
+              let hasIncompleteItems = false;
               for (const line of comment.body.split('\n')) {
                 const trimmed = line.trim();
                 if (trimmed.startsWith('- [ ]')) {
-                  await github.rest.issues.removeLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: ${{ steps.issue-number.outputs.result }},
-                    name: 'checklists: complete',
-                  });
-                  await github.rest.issues.addLabels({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: ${{ steps.issue-number.outputs.result }},
-                    labels: ['checklists: incomplete'],
-                  });
-                  throw new Error(`Checklist item not checked: ${trimmed}`);
-                }
-
-                if (trimmed.startsWith('- [x]')) {
+                  if (hasIncompleteItems === false) {
+                    hasIncompleteItems = true;
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: ${{ steps.issue-number.outputs.result }},
+                      name: 'checklists: complete',
+                    });
+                    await github.rest.issues.addLabels({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: ${{ steps.issue-number.outputs.result }},
+                      labels: ['checklists: incomplete'],
+                    });
+                  }
+                  core.info(`Checklist item not checked: ${trimmed}`)
+                } else if (trimmed.startsWith('- [x]')) {
                   core.info(`Checklist item checked: ${trimmed}`);
                 }
               }
             }
 
-            await github.rest.issues.removeLabel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ steps.issue-number.outputs.result }},
-              name: 'checklists: incomplete',
-            });
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ steps.issue-number.outputs.result }},
-              labels: ['checklists: complete'],
-            });
+            if (!hasIncompleteItems) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ steps.issue-number.outputs.result }},
+                name: 'checklists: incomplete',
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: ${{ steps.issue-number.outputs.result }},
+                labels: ['checklists: complete'],
+              });
+            }
 

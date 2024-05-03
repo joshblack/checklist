@@ -1,0 +1,22 @@
+name: Checklist Status
+on:
+  pull_request:
+    types: [opened, labeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checklists are complete
+        if: ${{ contains(github.event.labels.*.name, 'checklist:') && contains(github.event.labels.*.name, 'checklists: complete') }}
+        run: exit 0
+      - name: Checklists are incomplete
+        if: ${{ contains(github.event.labels.*.name, 'checklist:') && contains(github.event.labels.*.name, 'checklists: incomplete') }}
+        run: exit 1
+      - name: No checklists
+        if: ${{ !contains(github.event.labels.*.name, 'checklist:') }}
+        run: exit 0
