@@ -39,7 +39,7 @@ jobs:
       - uses: actions/create-github-app-token@v1
         id: app-token
         with:
-          app-id: ${{ vars.CHECKLIST_JAPP_ID }}
+          app-id: ${{ vars.CHECKLIST_APP_ID }}
           private-key: ${{ secrets.CHECKLIST_PRIVATE_KEY }}
       - uses: actions/github-script@v7
         with:
