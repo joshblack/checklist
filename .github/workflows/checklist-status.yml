@@ -1,7 +1,6 @@
 name: Checklist Status
 on:
   pull_request:
-    types: [opened, labeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
