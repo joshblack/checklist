@@ -88,12 +88,17 @@ jobs:
                 if (trimmed.startsWith('- [ ]')) {
                   if (hasIncompleteItems === false) {
                     hasIncompleteItems = true;
-                    await github.rest.issues.removeLabel({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      issue_number: ${{ steps.issue-number.outputs.result }},
-                      name: 'checklists: complete',
+                    const hasCompleteLabel = labels.find((label) => {
+                      return label.name === 'checklists: complete';
                     });
+                    if (hasCompleteLabel) {
+                      await github.rest.issues.removeLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: ${{ steps.issue-number.outputs.result }},
+                        name: 'checklists: complete',
+                      });
+                    }
                     await github.rest.issues.addLabels({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
@@ -109,12 +114,17 @@ jobs:
             }
 
             if (!hasIncompleteItems) {
-              await github.rest.issues.removeLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: ${{ steps.issue-number.outputs.result }},
-                name: 'checklists: incomplete',
+              const hasIncompleteLabel = labels.find((label) => {
+                return label.name === 'checklists: incomplete';
               });
+              if (hasIncompleteLabel) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: ${{ steps.issue-number.outputs.result }},
+                  name: 'checklists: incomplete',
+                });
+              }
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
