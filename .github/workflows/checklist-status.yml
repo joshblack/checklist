@@ -19,7 +19,7 @@ jobs:
           cache: "npm"
       - uses: actions/github-script@v7
         with:
-          script:
+          script: |
             const CHECKLIST_REGEX = /^checklist: (.+)/g;
             const checklists = context.payload.pull_request.labels.filter((label) => {
               return label.name.startsWith('checklist: ');
