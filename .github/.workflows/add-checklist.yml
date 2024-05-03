@@ -1,0 +1,66 @@
+name: Add Checklist
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  checklist:
+    if: startsWith(github.event.label.name, 'checklist:')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { existsSync, readFileSync } = require('node:fs');
+            const path = require('node:path');
+            const process = require('node:process');
+
+            const label = context.payload.label.name;
+            const CHECKLIST_REGEX = /^checklist: (.+)/g;
+            const matches = label.matchAll(CHECKLIST_REGEX);
+            if (matches.length === 0) {
+              throw new Error('No checklist found in label');
+            }
+
+            const [match] = matches;
+            const [_match, checklist] = match;
+            if (!checklist) {
+              throw new Error('Unable to find checklist from regex');
+            }
+
+            const filepath = path.format({
+              dir: path.join(process.cwd(), '.github', 'checklists'),
+              name: checklist,
+              ext: '.md',
+            });
+            if (!existsSync(filepath)) {
+              throw new Error(`Checklist file not found: ${filepath}`);
+            }
+
+            const contents = fs.readFileSync(filepath, 'utf8');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.pull_request.number,
+            });
+            const identifier = `<!-- source:actions checklist:${checklist} -->`;
+            const hasComment = comments.find((comment) => {
+              return comment.body.includes(identifier);
+            });
+            if (hasComment) {
+              core.info('Checklist already added');
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.pull_request.number,
+              body: `${identifier}\n${contents}`,
+            });

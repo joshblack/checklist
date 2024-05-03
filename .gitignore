@@ -1,0 +1,24 @@
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Certificates
+*.crt
+*.pem
+
+# Editor
+.DS_Store
+*.swp
+.idea
+.vscode
+
+# Keep environment variables out of version control
+.env
+
+# Dependencies
+node_modules
