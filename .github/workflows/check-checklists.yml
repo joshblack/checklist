@@ -84,7 +84,7 @@ jobs:
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     issue_number: ${{ steps.issue-number.outputs.result }},
-                    labels: ['checklists: complete'],
+                    name: 'checklists: complete',
                   });
                   await github.rest.issues.addLabels({
                     owner: context.repo.owner,
@@ -92,7 +92,6 @@ jobs:
                     issue_number: ${{ steps.issue-number.outputs.result }},
                     labels: ['checklists: incomplete'],
                   });
-
                   throw new Error(`Checklist item not checked: ${trimmed}`);
                 }
 
@@ -106,7 +105,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ${{ steps.issue-number.outputs.result }},
-              labels: ['checklists: incomplete'],
+              name: 'checklists: incomplete',
             });
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
