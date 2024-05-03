@@ -80,6 +80,12 @@ jobs:
               for (const line of comment.body.split('\n')) {
                 const trimmed = line.trim();
                 if (trimmed.startsWith('- [ ]')) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: ${{ steps.issue-number.outputs.result }},
+                    labels: ['checklists: complete'],
+                  });
                   await github.rest.issues.addLabels({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -96,6 +102,12 @@ jobs:
               }
             }
 
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.issue-number.outputs.result }},
+              labels: ['checklists: incomplete'],
+            });
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
