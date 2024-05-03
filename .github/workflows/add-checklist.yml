@@ -43,7 +43,7 @@ jobs:
               throw new Error(`Checklist file not found: ${filepath}`);
             }
 
-            const contents = fs.readFileSync(filepath, 'utf8');
+            const contents = readFileSync(filepath, 'utf8');
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
